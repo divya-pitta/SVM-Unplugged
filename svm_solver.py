@@ -38,6 +38,23 @@ def quadratic_kernel(X, power=2):
 def cubic_kernel(X):
 	return quadratic_kernel(X, power=3)	
 
+def svm_softmargin_dual(X, y, C):
+	P_sqrt = y[:, None]*X
+	P = cvxopt.matrix(P_sqrt.dot(P_sqrt.T))
+	q = cvxopt.matrix(-np.ones((y.shape[0], 1)))
+	G1 = -np.eye(y.shape[0])
+	G2 = np.eye(y.shape[0])
+	G = cvxopt.matrix(np.vstack((G1, G2)))
+	h1 = np.zeros(y.shape[0])
+	h2 = C*np.ones(y.shape[0])
+	h = cvxopt.matrix(np.append(h1, h2))
+	A = cvxopt.matrix(y.reshape(1, -1))
+	b = cvxopt.matrix(np.zeros(1))
+	solver = cvxopt.solvers.qp(P, q, G, h, A, b)
+	alphas = np.array(solver['x'])
+	loss = 0.5*np.array(np.dot(np.dot(alphas.T, P), alphas)) + np.dot(q.T, alphas)
+	return alphas, loss
+
 if sys.argv[1]=='iris':
 	X, y = iris_svm.load_data_binary()
 else:
@@ -59,4 +76,20 @@ else:
 
 alphas = svm_dual(XiXj, y)
 print np.where(alphas>1e-4)[0].shape
-print alphas
+print alphas[np.where(alphas>1e-4)[0]]
+
+print("------SVM-Soft Margin-------")
+c_arr = [0.001, 0.01, 1, 10, 100, 1000, 10000, 100000, 1000000]
+min_loss = float("inf")
+c_opt = 0
+for c in c_arr:
+	alphas, loss = svm_softmargin_dual(X, y, c)
+	if(loss<min_loss):
+		min_loss = loss
+		c_opt = c
+
+print("Optimal c: ", c_opt)
+
+alphas, loss = svm_softmargin_dual(X, y, c_opt)
+print np.where(alphas>1e-4)[0].shape
+print alphas[np.where(alphas>1e-4)[0]]
