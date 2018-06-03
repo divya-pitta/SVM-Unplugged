@@ -3,6 +3,7 @@ import cvxopt
 import numpy as np
 import breast_cancer_svm
 import iris_svm
+import diabetes_svm
 
 def svm_dual(XiXj, y):
 	P = y[:, None]*y
@@ -69,6 +70,8 @@ if sys.argv[1]=='iris':
 	X, y = iris_svm.load_data_binary()
 elif sys.argv[1]=='breast_cancer':
 	X, y = breast_cancer_svm.load_data()
+elif sys.argv[1]=='diabetes':
+	X,y = diabetes_svm.load_data()
 
 print X.shape, y.shape
 if len(sys.argv) > 2:
@@ -83,6 +86,7 @@ if len(sys.argv) > 2:
 		exit()
 else:
 	print 'Solving LinearSVC'
+	print 'solving linear now...'
 	XiXj = X.dot(X.T)
 
 alphas = svm_dual(XiXj, y)
@@ -98,6 +102,7 @@ for xi, yi in zip(range(len(X)), y):
 		predicted.append(-1)
 predicted = np.array(predicted)
 print np.sum(y == predicted)*1./len(y), 'Accuracy'
+print("Accuracy:",np.sum(y == predicted)*1.0/len(predicted))
 
 # print np.where(alphas>1e-4)[0].shape
 # print alphas[np.where(alphas>1e-4)[0]]

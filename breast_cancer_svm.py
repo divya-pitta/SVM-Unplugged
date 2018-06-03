@@ -15,7 +15,5 @@ def load_data(file='breast-cancer_scale.txt'):
 				y.append(-1.0)
 			else:
 				y.append(1.0)
-
-	# X = [[-1, 1], [1, 1], [1, -1], [-1, -1]]
-	# y = [1., 1., -1., -1.]
+				
 	return np.array(X, dtype=np.float32), np.array(y)
