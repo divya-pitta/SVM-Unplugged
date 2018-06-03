@@ -101,7 +101,6 @@ for xi, yi in zip(range(len(X)), y):
 	else:
 		predicted.append(-1)
 predicted = np.array(predicted)
-print np.sum(y == predicted)*1./len(y), 'Accuracy'
 print("Accuracy:",np.sum(y == predicted)*1.0/len(predicted))
 
 # print np.where(alphas>1e-4)[0].shape
