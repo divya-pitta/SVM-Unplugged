@@ -55,6 +55,16 @@ def svm_softmargin_dual(X, y, C):
 	loss = 0.5*np.array(np.dot(np.dot(alphas.T, P), alphas)) + np.dot(q.T, alphas)
 	return alphas, loss
 
+def calc_bias(alphas, y, XiXj):
+	non_zero_indices = np.where(alphas>1e-4)[0]
+	print(alphas[non_zero_indices].shape, y[non_zero_indices].shape)
+	# exit()
+	y = y.reshape(-1, 1)
+	WXi = np.sum((alphas[non_zero_indices]*y[non_zero_indices]*XiXj[non_zero_indices,:]),axis=0)
+	bias = 1.0/np.array(y) - WXi
+	bias = np.mean(bias)
+	return bias, WXi
+
 if sys.argv[1]=='iris':
 	X, y = iris_svm.load_data_binary()
 else:
@@ -66,7 +76,7 @@ if len(sys.argv) > 2:
 		XiXj = rbf_kernel(X)
 	elif sys.argv[2]=='quadratic':
 		XiXj = quadratic_kernel(X)
-	elif sys.argv[3]=='cubic':
+	elif sys.argv[2]=='cubic':
 		XiXj = cubic_kernel(X)
 	else:
 		print 'No such kernel available'
@@ -75,21 +85,34 @@ else:
 	XiXj = X.dot(X.T)
 
 alphas = svm_dual(XiXj, y)
+bias, WXi = calc_bias(alphas, y, XiXj)
+print("Bias", bias)
+print("Weights:,", WXi)
+
+predicted = []
+for xi, yi in zip(range(len(X)), y):
+	if(WXi[xi]+bias>=0):
+		predicted.append(1)
+	else:
+		predicted.append(-1)
+predicted = np.array(predicted)
+print(np.sum(y == predicted))
+
 print np.where(alphas>1e-4)[0].shape
 print alphas[np.where(alphas>1e-4)[0]]
 
-print("------SVM-Soft Margin-------")
-c_arr = [0.001, 0.01, 1, 10, 100, 1000, 10000, 100000, 1000000]
-min_loss = float("inf")
-c_opt = 0
-for c in c_arr:
-	alphas, loss = svm_softmargin_dual(X, y, c)
-	if(loss<min_loss):
-		min_loss = loss
-		c_opt = c
+# print("------SVM-Soft Margin-------")
+# c_arr = [0.001, 0.01, 1, 10, 100, 1000, 10000, 100000, 1000000]
+# min_loss = float("inf")
+# c_opt = 0
+# for c in c_arr:
+# 	alphas, loss = svm_softmargin_dual(X, y, c)
+# 	if(loss<min_loss):
+# 		min_loss = loss
+# 		c_opt = c
 
-print("Optimal c: ", c_opt)
+# print("Optimal c: ", c_opt)
 
-alphas, loss = svm_softmargin_dual(X, y, c_opt)
-print np.where(alphas>1e-4)[0].shape
-print alphas[np.where(alphas>1e-4)[0]]
+# alphas, loss = svm_softmargin_dual(X, y, c_opt)
+# print np.where(alphas>1e-4)[0].shape
+# print alphas[np.where(alphas>1e-4)[0]]
