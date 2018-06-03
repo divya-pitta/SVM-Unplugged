@@ -11,7 +11,7 @@ def load_data(file='breast-cancer_scale.txt'):
 		for line in f:
 			vals = line.strip().split()
 			X.append([float(feature_val.split(':')[-1]) for feature_val in vals[1:]])
-			if vals[0] == 2.0:
+			if vals[0] == '2':
 				y.append(-1.0)
 			else:
 				y.append(1.0)
@@ -19,5 +19,3 @@ def load_data(file='breast-cancer_scale.txt'):
 	# X = [[-1, 1], [1, 1], [1, -1], [-1, -1]]
 	# y = [1., 1., -1., -1.]
 	return np.array(X, dtype=np.float32), np.array(y)
-
-
