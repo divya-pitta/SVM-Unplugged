@@ -39,6 +39,16 @@ def quadratic_kernel(X, power=2):
 def cubic_kernel(X):
 	return quadratic_kernel(X, power=3)	
 
+def sigmoid_kernel(X, a=10.0, r=-1e50):
+	XiXj = np.zeros((X.shape[0], X.shape[0]))
+	for i in range(X.shape[0]):
+		for j in range(i, X.shape[0]):
+			# print np.tanh(a*X[i].dot(X[j].T)+r)
+			XiXj[i, j] = np.tanh(a*X[i].dot(X[j].T)+r)
+			XiXj[j, i] = XiXj[i, j]
+
+	return XiXj
+
 def svm_softmargin_dual(X, y, C):
 	P_sqrt = y[:, None]*X
 	P = cvxopt.matrix(P_sqrt.dot(P_sqrt.T))
@@ -81,6 +91,8 @@ if len(sys.argv) > 2:
 		XiXj = quadratic_kernel(X)
 	elif sys.argv[2]=='cubic':
 		XiXj = cubic_kernel(X)
+	elif sys.argv[2]=='sigmoid':
+		XiXj = sigmoid_kernel(X)
 	else:
 		print 'No such kernel available'
 		exit()
