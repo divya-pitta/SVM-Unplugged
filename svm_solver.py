@@ -4,6 +4,8 @@ import numpy as np
 import breast_cancer_svm
 import iris_svm
 import diabetes_svm
+from sklearn.decomposition import PCA
+from matplotlib import pyplot as plt
 
 def svm_dual(XiXj, y):
 	P = y[:, None]*y
@@ -17,37 +19,14 @@ def svm_dual(XiXj, y):
 	alphas = np.array(solver['x'])
 	return alphas
 
-def rbf_kernel(X, sigma=10):
-	XiXj = np.zeros((X.shape[0], X.shape[0]))
-	for i in range(X.shape[0]):
-		for j in range(i, X.shape[0]):
-			XiXj[i, j] = np.exp(-np.sum((X[i]-X[j])**2)/(sigma**2))
-			XiXj[j, i] = XiXj[i, j]
-			# print 'olo', XiXj[i, j]
+def rbf_kernel(x, z, sigma=10):
+	return np.exp(-np.sum(x-z)**2)/(sigma**2)
 
-	return XiXj
+def quadratic_kernel(x, z, power=2):
+	return (x.dot(z.T) + 1)**power
 
-def quadratic_kernel(X, power=2):
-	XiXj = np.zeros((X.shape[0], X.shape[0]))
-	for i in range(X.shape[0]):
-		for j in range(i, X.shape[0]):
-			XiXj[i, j] = (X[i].dot(X[j].T) + 1)**power
-			XiXj[j, i] = XiXj[i, j]
-
-	return XiXj
-
-def cubic_kernel(X):
-	return quadratic_kernel(X, power=3)	
-
-def sigmoid_kernel(X, a=10.0, r=-1e50):
-	XiXj = np.zeros((X.shape[0], X.shape[0]))
-	for i in range(X.shape[0]):
-		for j in range(i, X.shape[0]):
-			# print np.tanh(a*X[i].dot(X[j].T)+r)
-			XiXj[i, j] = np.tanh(a*X[i].dot(X[j].T)+r)
-			XiXj[j, i] = XiXj[i, j]
-
-	return XiXj
+def sigmoid_kernel(x, z, a=10.0, r=-1e50):
+	return np.tanh(a*x.dot(z.T)+r)
 
 def svm_softmargin_dual(X, y, C):
 	P_sqrt = y[:, None]*X
@@ -68,13 +47,46 @@ def svm_softmargin_dual(X, y, C):
 
 def calc_bias(alphas, y, XiXj):
 	non_zero_indices = np.where(alphas>1e-4)[0]
-	print(alphas[non_zero_indices].shape, y[non_zero_indices].shape)
+	# print(alphas[non_zero_indices].shape, y[non_zero_indices].shape)
 	# exit()
 	y = y.reshape(-1, 1)
 	WXi = np.sum((alphas[non_zero_indices]*y[non_zero_indices]*XiXj[non_zero_indices,:]),axis=0)
 	bias = 1.0/np.array(y) - WXi
 	bias = np.mean(bias)
 	return bias, WXi
+
+def predict_rbf(alphas, bias, X, sample):
+	non_zero_indices = np.where(alphas>1e-4)[0]
+	pred = bias
+	for idx in non_zero_indices:
+		pred += alphas[idx]*y[idx]*rbf_kernel(X[idx], sample)
+
+	return pred
+
+def predict_quadratic(alphas, bias, X, sample):
+	non_zero_indices = np.where(alphas>1e-4)[0]
+	pred = bias
+	for idx in non_zero_indices:
+		pred += alphas[idx]*y[idx]*quadratic_kernel(X[idx], sample)
+
+	return pred
+
+def predict_sigmoid(alphas, bias, X, sample):
+	non_zero_indices = np.where(alphas>1e-4)[0]
+	pred = bias
+	for idx in non_zero_indices:
+		pred += alphas[idx]*y[idx]*sigmoid_kernel(X[idx], sample)
+
+	return pred
+
+def predict_linear(alphas, bias, X, sample):
+	non_zero_indices = np.where(alphas>1e-4)[0]
+	pred = bias
+	for idx in non_zero_indices:
+		pred += alphas[idx]*y[idx]*X[idx].dot(sample)
+
+	return pred
+
 
 if sys.argv[1]=='iris':
 	X, y = iris_svm.load_data_binary()
@@ -84,23 +96,53 @@ elif sys.argv[1]=='diabetes':
 	X,y = diabetes_svm.load_data()
 
 print X.shape, y.shape
+pca = PCA(n_components=2)
+pca.fit(X)
+X = pca.transform(X)
+print 'After PCA', X.shape
+print 'Visualizing now...'
+data_pts = [[] for _ in range(2)]
+for i in range(X.shape[0]):
+	data_pts[min(int(y[i]), 0)].append(X[i,:])
+
+markers = ['^', 'o']
+labels = ['negative', 'positive']
+for c in range(2):
+	this_class = np.array(data_pts[c])
+	plt.scatter(this_class[:,0], this_class[:,1], marker=markers[c], label=labels[c])
+
+plt.legend()
+XiXj = np.zeros((X.shape[0], X.shape[0]))
 if len(sys.argv) > 2:
 	if sys.argv[2]=='rbf':
-		XiXj = rbf_kernel(X)
+		for i in range(X.shape[0]):
+			for j in range(i, X.shape[0]):
+				XiXj[i, j] = rbf_kernel(X[i], X[j])
+				XiXj[j, i] = XiXj[i, j]
 	elif sys.argv[2]=='quadratic':
-		XiXj = quadratic_kernel(X)
+		for i in range(X.shape[0]):
+			for j in range(i, X.shape[0]):
+				XiXj[i, j] = quadratic_kernel(X[i], X[j])
+				XiXj[j, i] = XiXj[i, j]
+
 	elif sys.argv[2]=='cubic':
-		XiXj = cubic_kernel(X)
+		for i in range(X.shape[0]):
+			for j in range(i, X.shape[0]):
+				XiXj[i, j] = cubic_kernel(X[i], X[j])
+				XiXj[j, i] = XiXj[i, j]
+
 	elif sys.argv[2]=='sigmoid':
-		XiXj = sigmoid_kernel(X)
+		for i in range(X.shape[0]):
+			for j in range(i, X.shape[0]):
+				XiXj[i, j] = sigmoid_kernel(X[i], X[j])
+				XiXj[j, i] = XiXj[i, j]
 	else:
 		print 'No such kernel available'
 		exit()
 else:
-	print 'Solving LinearSVC'
-	print 'solving linear now...'
 	XiXj = X.dot(X.T)
 
+print 'Prepared XiXj matrix'
 alphas = svm_dual(XiXj, y)
 bias, WXi = calc_bias(alphas, y, XiXj)
 print("Bias", bias)
@@ -115,6 +157,15 @@ for xi, yi in zip(range(len(X)), y):
 predicted = np.array(predicted)
 print("Accuracy:",np.sum(y == predicted)*1.0/len(predicted))
 
+
+my_points = np.mgrid[-2:5:0.05, -2:2:0.05].reshape(2, -1).T
+colors = ['green', 'red']
+region_colors = []
+for i in range(len(my_points)):
+	region_colors.append(min(0, np.sign(predict_sigmoid(alphas, bias, X, my_points[i]))))
+
+plt.scatter(my_points[:,0], my_points[:,1], c=region_colors, alpha=0.05)
+plt.savefig('breast_cancer_sigmoid_svm.png')
 # print np.where(alphas>1e-4)[0].shape
 # print alphas[np.where(alphas>1e-4)[0]]
 

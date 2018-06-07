@@ -18,4 +18,5 @@ def load_data(file='diabetes_scale.txt'):
 				else:
 					y.append(1.0)
 
+	print np.sum(np.array(y)==1.0)*1./len(y), 'baseline accuracy' # base accuracy
 	return np.array(X, dtype=np.float32), np.array(y)
